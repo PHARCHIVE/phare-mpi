@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -ex
 CWD="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" && cd "$CWD"
+
 ROCM_ROOT="/opt/rocm"
 INSTALL_DIR="/opt/mpi/rocm"
 MPI_VER=${MPI_VER:-"5.0.2"} # "5.0.0rc9" for older libpmix

@@ -8,6 +8,7 @@ NPROC=${NPROC:-$(nproc --all)}
 UCX_GIT="https://github.com/openucx/ucx"
 UCX_VER=${UCX_VER:-"v1.15.0"}
 
+
 [[ ! -d "ucx" ]] && git clone "${UCX_GIT}" -b "${UCX_VER}" --depth 10 --recursive --shallow-submodules
 (
     cd ucx
