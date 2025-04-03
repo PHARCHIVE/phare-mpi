@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 set -ex
 CWD="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" && cd "$CWD"
-CUDA_ROOT="/usr/local/cuda"
-INSTALL_DIR="/opt/mpi/cuda"
+CUDA_ROOT=${CUDA_ROOT:-"/usr/local/cuda"}
+INSTALL_DIR=${INSTALL_DIR:-"/opt/mpi/cuda"}
 MPI_VER=${MPI_VER:-"5.0.2"}
 NPROC=${NPROC:-$(nproc --all)}
 UCX_GIT="https://github.com/openucx/ucx"
 UCX_VER=${UCX_VER:-"v1.15.0"}
-
 
 [[ ! -d "ucx" ]] && git clone "${UCX_GIT}" -b "${UCX_VER}" --depth 10 --recursive --shallow-submodules
 (
