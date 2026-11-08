@@ -1,19 +1,12 @@
-name: Fedora builds
+name: CI
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 on:
-  workflow_dispatch:
   pull_request:
-    paths:
-      - "phare-mpi-dbg/**"
-      - "phare-mpi-opt/**"
-      - "phare-mpi-cuda/**"
-      - "hdf5-subfiling/**"
-      - ".github/workflows/fedora.yml"
-      - ".github/scripts/**"
+  workflow_dispatch:
 
 env:
   # system pmix/ucx are installed on purpose as decoys: our builds must never link them
@@ -27,7 +20,17 @@ env:
   PRTE_MCA_rmaps_default_mapping_policy: ":oversubscribe"
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    container: fedora:43
+    steps:
+      - run: dnf install -y ShellCheck shfmt
+      - uses: actions/checkout@v5
+      - run: shellcheck -x ./*/*.sh .github/scripts/*.sh
+      - run: shfmt -i 4 -d ./*/*.sh .github/scripts/*.sh
+
   host:
+    needs: lint
     runs-on: ubuntu-latest
     container: fedora:43
     timeout-minutes: 240
@@ -37,7 +40,7 @@ jobs:
         mode: [dbg, opt]
     steps:
       - run: dnf install -y $DEPS
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: mpi
         run: ./phare-mpi-${{ matrix.mode }}/build.sh
@@ -56,7 +59,7 @@ jobs:
         run: ctest -R subfiling --no-tests=error --output-on-failure
 
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: logs-host-${{ matrix.mode }}
           path: |
@@ -66,6 +69,7 @@ jobs:
           include-hidden-files: true
 
   cuda:
+    needs: lint
     runs-on: ubuntu-latest
     container: fedora:43
     timeout-minutes: 240
@@ -84,7 +88,7 @@ jobs:
           # no GPU on runners: compile/link only, so a minimal toolkit is enough
           dnf install -y cuda-nvcc-$CUDA_VER cuda-cudart-devel-$CUDA_VER \
                          cuda-driver-devel-$CUDA_VER cuda-nvml-devel-$CUDA_VER
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: mpi
         run: ./phare-mpi-cuda/build.sh ${{ matrix.mode }}
@@ -99,7 +103,7 @@ jobs:
         run: ./.github/scripts/check_linkage.sh /opt/mpi/hdf5-subfiling-cuda-${{ matrix.mode }} /opt/mpi/cuda-${{ matrix.mode }}
 
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: logs-cuda-${{ matrix.mode }}
           path: |

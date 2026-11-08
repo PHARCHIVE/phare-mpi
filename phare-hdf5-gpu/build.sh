@@ -16,8 +16,8 @@ CMAKE_CONFIG="${CMAKE_CONFIG} ${MPI_C_LIBRARY}"
 (
     rm -rf build && mkdir build && cd build
     export CC CXX FC
-    cmake -G Ninja  -DHDF5_BUILD_FORTRAN=ON \
-          -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
-          -DHDF5_ENABLE_PARALLEL=ON ../hdf5
+    cmake -G Ninja -DHDF5_BUILD_FORTRAN=ON \
+        -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
+        -DHDF5_ENABLE_PARALLEL=ON ../hdf5
     ninja && ninja install
 )

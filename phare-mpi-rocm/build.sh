@@ -4,10 +4,10 @@ CWD="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" && cd "$CWD"
 
 ROCM_ROOT="/opt/rocm"
 INSTALL_DIR="/opt/mpi/rocm"
-MPI_VER=${MPI_VER:-"5.0.2"} # "5.0.0rc9" for older libpmix
+MPI_VER=${MPI_VER:-"5.0.11"} # bundles pmix v5.0.11 + prrte v3.0.14
 NPROC=${NPROC:-$(nproc --all)}
 UCX_GIT="https://github.com/openucx/ucx"
-UCX_VER=${UCX_VER:-"v1.15.0"}
+UCX_VER=${UCX_VER:-"v1.22.0"}
 
 [[ ! -d "ucx" ]] && git clone "${UCX_GIT}" -b "${UCX_VER}" --depth 10 --recursive --shallow-submodules
 (
@@ -19,7 +19,8 @@ UCX_VER=${UCX_VER:-"v1.15.0"}
 
 get_ompi() (
     [ -n "${MPI_VER}" ] || (echo "FAIL" && exit 1)
-    # tar ball version is different to github repo tag for unknown reasons
+    # use the release tarball (make dist), not a github tag archive: it ships the generated
+    # configure, the bundled pmix/prrte submodules and prebuilt docs (hence --disable-sphinx)
     [ ! -f "openmpi-${MPI_VER}.tar.bz2" ] && wget "https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-${MPI_VER}.tar.bz2"
     tar xf "openmpi-${MPI_VER}.tar.bz2"
     mv "openmpi-${MPI_VER}" ompi

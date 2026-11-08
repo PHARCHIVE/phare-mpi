@@ -4,11 +4,11 @@ CWD="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" && cd "$CWD"
 NPROC=${NPROC:-$(nproc --all)}
 FLAGS="-DNDEBUG -g0 -O3 -march=native -mtune=native"
 INSTALL_DIR="/opt/mpi/host"
-MPI_VER=${MPI_VER:-"5.0.10"}
+MPI_VER=${MPI_VER:-"5.0.11"} # bundles pmix v5.0.11 + prrte v3.0.14
 UCX_GIT="https://github.com/openucx/ucx"
-UCX_VER=${UCX_VER:-"v1.20.0"}
+UCX_VER=${UCX_VER:-"v1.22.0"}
 PMIX_GIT="https://github.com/openpmix/openpmix"
-PMIX_VER="v5.0.10"
+PMIX_VER=${PMIX_VER:-"v5.0.11"} # match the version bundled in ompi
 
 [[ ! -d "pmix" ]] && git clone "${PMIX_GIT}" -b "${PMIX_VER}" --depth 10 --recursive --shallow-submodules pmix
 (
@@ -28,7 +28,8 @@ PMIX_VER="v5.0.10"
 
 get_ompi() (
     [ -n "${MPI_VER}" ] || (echo "FAIL" && exit 1)
-    # tar ball version is different to github repo tag for unknown reasons
+    # use the release tarball (make dist), not a github tag archive: it ships the generated
+    # configure, the bundled pmix/prrte submodules and prebuilt docs (hence --disable-sphinx)
     [ ! -f "openmpi-${MPI_VER}.tar.bz2" ] && wget "https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-${MPI_VER}.tar.bz2"
     tar xf "openmpi-${MPI_VER}.tar.bz2"
     mv "openmpi-${MPI_VER}" ompi
@@ -41,4 +42,3 @@ get_ompi() (
     ./configure CFLAGS="${FLAGS}" CXXFLAGS="${FLAGS}" --prefix="${INSTALL_DIR}" --with-pmix="${INSTALL_DIR}" --with-ucx="${INSTALL_DIR}" --disable-sphinx
     make VERBOSE=1 -j "$NPROC" && make install
 ) 1> >(tee "$CWD/.ompi.sh.out") 2> >(tee "$CWD/.ompi.sh.err" >&2)
-

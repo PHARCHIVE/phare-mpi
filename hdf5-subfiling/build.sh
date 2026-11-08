@@ -6,7 +6,7 @@ CWD="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" && cd "$CWD"
 MODE=${1:-${MODE:-dbg}}
 MPI_FLAVOR=${2:-${MPI_FLAVOR:-host}}
 HDF5_GIT="https://github.com/HDFGroup/hdf5"
-HDF5_VER=${HDF5_VER:-""} # git tag/branch, empty for default branch
+HDF5_VER=${HDF5_VER:-"2.2.0"} # git tag/branch, empty for default branch
 
 case "${MODE}" in
 dbg)
