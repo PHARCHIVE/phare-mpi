@@ -10,12 +10,11 @@ FLAGS="-g3 -O3 -march=native -mtune=native -fno-omit-frame-pointer"
     mkdir build && cd build
     export CC="${MPI}/bin/mpicc" CXX="${MPI}/bin/mpicxx" FC="${MPI}/bin/mpif90"
     cmake -DMPI_C_LIBRARY="${MPI}/lib/libmpi.so" \
-          -G Ninja  -DHDF5_BUILD_FORTRAN=ON \
-          -DCMAKE_INSTALL_PREFIX=/opt/mpi/hdf5 \
-          -DHDF5_ENABLE_PARALLEL=ON \
-          -DCMAKE_CXX_FLAGS="${FLAGS}" \
-          -DCMAKE_C_FLAGS="${FLAGS}" \
-          -DCMAKE_BUILD_TYPE="Debug" ../hdf5
+        -G Ninja -DHDF5_BUILD_FORTRAN=ON \
+        -DCMAKE_INSTALL_PREFIX=/opt/mpi/hdf5 \
+        -DHDF5_ENABLE_PARALLEL=ON \
+        -DCMAKE_CXX_FLAGS="${FLAGS}" \
+        -DCMAKE_C_FLAGS="${FLAGS}" \
+        -DCMAKE_BUILD_TYPE="Debug" ../hdf5
     ninja && ninja install
 )
-
