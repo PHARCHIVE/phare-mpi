@@ -1,12 +1,21 @@
 #!/usr/bin/env bash
 # usage: ./build.sh [dbg|opt] [host|cuda|rocm]   (default: dbg host)
+#
+# env:
+#   MPI          mpi prefix to build against (default /opt/mpi/<flavor>-<mode>, see ../build_mpi.sh)
+#   INSTALL_DIR  install prefix              (default /opt/mpi/hdf5-subfiling-<flavor>-<mode>)
+#   SRC_DIR      source tree                 (default this directory)
+#   BUILD_ROOT   build trees + logs          (default this directory)
+#   HDF5_VER     git tag/branch, set empty for the default branch
+#   NPROC        parallel build jobs         (default: all cores)
 set -ex
 CWD="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" && cd "$CWD"
 
 MODE=${1:-${MODE:-dbg}}
 MPI_FLAVOR=${2:-${MPI_FLAVOR:-host}}
+NPROC=${NPROC:-$(nproc --all)}
 HDF5_GIT="https://github.com/HDFGroup/hdf5"
-HDF5_VER=${HDF5_VER:-"2.2.0"} # git tag/branch, empty for default branch
+HDF5_VER=${HDF5_VER-"2.2.0"}
 
 case "${MODE}" in
 dbg)
@@ -24,9 +33,7 @@ opt)
 esac
 
 case "${MPI_FLAVOR}" in
-host) MPI=${MPI:-"/opt/mpi/host"} ;;
-cuda) MPI=${MPI:-"/opt/mpi/cuda-${MODE}"} ;;
-rocm) MPI=${MPI:-"/opt/mpi/rocm-${MODE}"} ;;
+host | cuda | rocm) MPI=${MPI:-"/opt/mpi/${MPI_FLAVOR}-${MODE}"} ;;
 *)
     echo "unknown mpi flavor '${MPI_FLAVOR}', expected host, cuda or rocm" >&2
     exit 1
@@ -35,14 +42,17 @@ esac
 
 TAG="${MPI_FLAVOR}-${MODE}"
 INSTALL_DIR=${INSTALL_DIR:-"/opt/mpi/hdf5-subfiling-${TAG}"}
-BUILD_DIR="${CWD}/build-${TAG}"
+SRC_DIR=$(mkdir -p "${SRC_DIR:-$CWD}" && cd "${SRC_DIR:-$CWD}" && pwd)
+BUILD_ROOT=$(mkdir -p "${BUILD_ROOT:-$CWD}" && cd "${BUILD_ROOT:-$CWD}" && pwd)
+BUILD_DIR="${BUILD_ROOT}/build-hdf5-${TAG}"
+HDF5_SRC="${SRC_DIR}/hdf5-${HDF5_VER:-develop}"
 
-if [[ ! -d "hdf5" ]]; then
-    git clone "${HDF5_GIT}" ${HDF5_VER:+-b "${HDF5_VER}"} --depth 5 --recursive --shallow-submodules hdf5
+if [[ ! -d "${HDF5_SRC}" ]]; then
+    git clone "${HDF5_GIT}" ${HDF5_VER:+-b "${HDF5_VER}"} --depth 5 --recursive --shallow-submodules "${HDF5_SRC}"
 fi
 
 (
-    rm -rf "${BUILD_DIR}" && mkdir "${BUILD_DIR}" && cd "${BUILD_DIR}"
+    rm -rf "${BUILD_DIR}" && mkdir -p "${BUILD_DIR}" && cd "${BUILD_DIR}"
     export CC="${MPI}/bin/mpicc" CXX="${MPI}/bin/mpicxx" FC="${MPI}/bin/mpif90"
     cmake -G Ninja \
         -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
@@ -55,6 +65,6 @@ fi
         -DHDF5_ENABLE_PARALLEL=ON \
         -DHDF5_ENABLE_SUBFILING_VFD=ON \
         -DHDF5_BUILD_FORTRAN=ON \
-        "${CWD}/hdf5"
-    ninja && ninja install
-) 1> >(tee "$CWD/.hdf5-${TAG}.sh.out") 2> >(tee "$CWD/.hdf5-${TAG}.sh.err" >&2)
+        "${HDF5_SRC}"
+    ninja -j "${NPROC}" && ninja install
+) 1> >(tee "${BUILD_ROOT}/.hdf5-${TAG}.sh.out") 2> >(tee "${BUILD_ROOT}/.hdf5-${TAG}.sh.err" >&2)

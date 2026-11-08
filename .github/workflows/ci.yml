@@ -26,8 +26,8 @@ jobs:
     steps:
       - run: dnf install -y ShellCheck shfmt
       - uses: actions/checkout@v5
-      - run: shellcheck -x ./*/*.sh .github/scripts/*.sh
-      - run: shfmt -i 4 -d ./*/*.sh .github/scripts/*.sh
+      - run: shellcheck -x ./*.sh ./*/*.sh .github/scripts/*.sh
+      - run: shfmt -i 4 -d ./*.sh ./*/*.sh .github/scripts/*.sh
 
   host:
     needs: lint
@@ -46,16 +46,16 @@ jobs:
         run: ./phare-mpi-${{ matrix.mode }}/build.sh
 
       - name: mpi linkage
-        run: ./.github/scripts/check_linkage.sh /opt/mpi/host
+        run: ./.github/scripts/check_linkage.sh /opt/mpi/host-${{ matrix.mode }}
 
       - name: hdf5
         run: ./hdf5-subfiling/build.sh ${{ matrix.mode }} host
 
       - name: hdf5 linkage
-        run: ./.github/scripts/check_linkage.sh /opt/mpi/hdf5-subfiling-host-${{ matrix.mode }} /opt/mpi/host
+        run: ./.github/scripts/check_linkage.sh /opt/mpi/hdf5-subfiling-host-${{ matrix.mode }} /opt/mpi/host-${{ matrix.mode }}
 
       - name: hdf5 subfiling tests
-        working-directory: hdf5-subfiling/build-host-${{ matrix.mode }}
+        working-directory: hdf5-subfiling/build-hdf5-host-${{ matrix.mode }}
         run: ctest -R subfiling --no-tests=error --output-on-failure
 
       - if: failure()
@@ -132,7 +132,7 @@ jobs:
         run: |
           apt-get update
           apt-get install -y build-essential gfortran autoconf automake libtool flex bison perl python3 \
-              git wget bzip2 cmake ninja-build file \
+              git wget bzip2 cmake ninja-build file pkg-config \
               libevent-dev libhwloc-dev zlib1g-dev \
               libpmix-dev libucx-dev
       - uses: actions/checkout@v5
