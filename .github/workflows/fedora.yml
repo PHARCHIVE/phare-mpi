@@ -1,0 +1,109 @@
+name: Fedora builds
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "phare-mpi-dbg/**"
+      - "phare-mpi-opt/**"
+      - "phare-mpi-cuda/**"
+      - "hdf5-subfiling/**"
+      - ".github/workflows/fedora.yml"
+      - ".github/scripts/**"
+
+env:
+  # system pmix/ucx are installed on purpose as decoys: our builds must never link them
+  DEPS: >-
+    gcc gcc-c++ gcc-gfortran make autoconf automake libtool flex bison perl python3
+    git wget bzip2 cmake ninja-build file findutils which diffutils
+    libevent-devel hwloc-devel zlib-devel
+    pmix pmix-devel ucx ucx-devel
+  OMPI_ALLOW_RUN_AS_ROOT: 1
+  OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
+  PRTE_MCA_rmaps_default_mapping_policy: ":oversubscribe"
+
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    container: fedora:43
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [dbg, opt]
+    steps:
+      - run: dnf install -y $DEPS
+      - uses: actions/checkout@v4
+
+      - name: mpi
+        run: ./phare-mpi-${{ matrix.mode }}/build.sh
+
+      - name: mpi linkage
+        run: ./.github/scripts/check_linkage.sh /opt/mpi/host
+
+      - name: hdf5
+        run: ./hdf5-subfiling/build.sh ${{ matrix.mode }} host
+
+      - name: hdf5 linkage
+        run: ./.github/scripts/check_linkage.sh /opt/mpi/hdf5-subfiling-host-${{ matrix.mode }} /opt/mpi/host
+
+      - name: hdf5 subfiling tests
+        working-directory: hdf5-subfiling/build-host-${{ matrix.mode }}
+        run: ctest -R subfiling --no-tests=error --output-on-failure
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-host-${{ matrix.mode }}
+          path: |
+            phare-mpi-*/.*.sh.*
+            hdf5-subfiling/.*.sh.*
+            phare-mpi-*/**/config.log
+          include-hidden-files: true
+
+  cuda:
+    runs-on: ubuntu-latest
+    container: fedora:43
+    timeout-minutes: 240
+    env:
+      CUDA_VER: "13-2" # latest in NVIDIA's fedora43 repo
+      CUDA_ROOT: /usr/local/cuda-13.2
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [dbg, opt]
+    steps:
+      - name: deps
+        run: |
+          dnf install -y $DEPS dnf-plugins-core
+          dnf config-manager addrepo --from-repofile=https://developer.download.nvidia.com/compute/cuda/repos/fedora43/x86_64/cuda-fedora43.repo
+          # no GPU on runners: compile/link only, so a minimal toolkit is enough
+          dnf install -y cuda-nvcc-$CUDA_VER cuda-cudart-devel-$CUDA_VER \
+                         cuda-driver-devel-$CUDA_VER cuda-nvml-devel-$CUDA_VER
+      - uses: actions/checkout@v4
+
+      - name: mpi
+        run: ./phare-mpi-cuda/build.sh ${{ matrix.mode }}
+
+      - name: mpi linkage
+        run: ./.github/scripts/check_linkage.sh /opt/mpi/cuda-${{ matrix.mode }}
+
+      - name: hdf5
+        run: ./hdf5-subfiling/build.sh ${{ matrix.mode }} cuda
+
+      - name: hdf5 linkage
+        run: ./.github/scripts/check_linkage.sh /opt/mpi/hdf5-subfiling-cuda-${{ matrix.mode }} /opt/mpi/cuda-${{ matrix.mode }}
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-cuda-${{ matrix.mode }}
+          path: |
+            phare-mpi-cuda/.*.sh.*
+            hdf5-subfiling/.*.sh.*
+            phare-mpi-cuda/build-*/**/config.log
+          include-hidden-files: true
