@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# usage: ./build.sh [dbg|opt] [host|cuda]   (default: dbg host)
+# usage: ./build.sh [dbg|opt] [host|cuda|rocm]   (default: dbg host)
 set -ex
 CWD="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" && cd "$CWD"
 
@@ -26,8 +26,9 @@ esac
 case "${MPI_FLAVOR}" in
 host) MPI=${MPI:-"/opt/mpi/host"} ;;
 cuda) MPI=${MPI:-"/opt/mpi/cuda-${MODE}"} ;;
+rocm) MPI=${MPI:-"/opt/mpi/rocm-${MODE}"} ;;
 *)
-    echo "unknown mpi flavor '${MPI_FLAVOR}', expected host or cuda" >&2
+    echo "unknown mpi flavor '${MPI_FLAVOR}', expected host, cuda or rocm" >&2
     exit 1
     ;;
 esac

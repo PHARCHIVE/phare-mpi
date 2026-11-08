@@ -111,3 +111,50 @@ jobs:
             hdf5-subfiling/.*.sh.*
             phare-mpi-cuda/build-*/**/config.log
           include-hidden-files: true
+
+  rocm:
+    needs: lint
+    runs-on: ubuntu-latest
+    container:
+      image: rocm/dev-ubuntu-24.04:7.2.4
+      options: --user root
+    timeout-minutes: 240
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      ROCM_ROOT: /opt/rocm
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [dbg, opt]
+    steps:
+      - name: deps
+        # system pmix/ucx installed on purpose as decoys, as in the fedora jobs
+        run: |
+          apt-get update
+          apt-get install -y build-essential gfortran autoconf automake libtool flex bison perl python3 \
+              git wget bzip2 cmake ninja-build file \
+              libevent-dev libhwloc-dev zlib1g-dev \
+              libpmix-dev libucx-dev
+      - uses: actions/checkout@v5
+
+      - name: mpi
+        run: ./phare-mpi-rocm/build.sh ${{ matrix.mode }}
+
+      - name: mpi linkage
+        run: ./.github/scripts/check_linkage.sh /opt/mpi/rocm-${{ matrix.mode }}
+
+      - name: hdf5
+        run: ./hdf5-subfiling/build.sh ${{ matrix.mode }} rocm
+
+      - name: hdf5 linkage
+        run: ./.github/scripts/check_linkage.sh /opt/mpi/hdf5-subfiling-rocm-${{ matrix.mode }} /opt/mpi/rocm-${{ matrix.mode }}
+
+      - if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: logs-rocm-${{ matrix.mode }}
+          path: |
+            phare-mpi-rocm/.*.sh.*
+            hdf5-subfiling/.*.sh.*
+            phare-mpi-rocm/build-*/**/config.log
+          include-hidden-files: true

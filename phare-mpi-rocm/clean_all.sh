@@ -2,4 +2,4 @@
 set -ex
 
 CWD="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" && cd "$CWD"
-rm -rf build ompi ucx
+rm -rf build-dbg build-opt ompi ucx pmix
